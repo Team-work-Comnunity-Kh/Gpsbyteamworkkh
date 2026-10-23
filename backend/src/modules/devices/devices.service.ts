@@ -94,7 +94,7 @@ export class DevicesService {
 
     pair.targetDeviceId = targetDevice.id;
     pair.targetUserId = userId;
-    pair.nickname = nickname;
+    if (nickname !== undefined) pair.nickname = nickname;
     pair.status = 'active';
     pair.acceptedAt = new Date();
     pair.pairingCode = `${pairingCode}`;
