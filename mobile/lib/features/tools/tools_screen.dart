@@ -3,8 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/coordinate_converter.dart';
-import '../../core/utils/area_calculator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import '../../shared/providers/auth_provider.dart';
 
@@ -88,9 +86,61 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
                 OutlinedButton.icon(onPressed: _configureServer, icon: const Icon(Icons.edit), label: const Text('Change server')),
               ]),
             ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'គណនី',
+            icon: Icons.account_circle_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Builder(builder: (context) {
+                  final user = ref.watch(authStateProvider).asData?.value;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    title: Text(user?.displayName.isNotEmpty == true
+                        ? user!.displayName
+                        : 'SmartGPS account'),
+                    subtitle: Text(user?.email ?? user?.phone ?? ''),
+                  );
+                }),
+                OutlinedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('ចាកចេញពីគណនី'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ចាកចេញពីគណនី?'),
+        content: const Text('អ្នកអាចចូលគណនីវិញបានគ្រប់ពេល។'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('បោះបង់'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.logout),
+            label: const Text('ចាកចេញ'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(authStateProvider.notifier).logout();
   }
 
   void _convertCoordinates() {
