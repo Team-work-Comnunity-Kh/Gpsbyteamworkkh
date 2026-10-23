@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/providers/auth_provider.dart';
 
@@ -38,7 +39,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(32)),
                   ),
                   padding: const EdgeInsets.all(24),
                   child: SingleChildScrollView(
@@ -48,11 +50,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('ចូលគណនី',
-                            style: Theme.of(context).textTheme.headlineMedium),
+                              style:
+                                  Theme.of(context).textTheme.headlineMedium),
                           const SizedBox(height: 4),
                           Text('SmartGPS — ប្រព័ន្ធ GPS ស្មាតសម្រាប់ប្រជាជន',
-                            style: Theme.of(context).textTheme.bodySmall),
-                          const SizedBox(height: 28),
+                              style: Theme.of(context).textTheme.bodySmall),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _configureServer,
+                              icon: const Icon(Icons.dns_outlined),
+                              label: const Text('កំណត់ API Server'),
+                            ),
+                          ),
+                          Text(
+                            'Server: ${ref.watch(authServiceProvider).dio.options.baseUrl}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 16),
 
                           // Identifier
                           TextFormField(
@@ -62,8 +80,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               prefixIcon: Icon(Icons.person_outline),
                             ),
                             keyboardType: TextInputType.emailAddress,
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'សូមបញ្ចូលអ៊ីម៉ែល ឬ លេខទូរសព្ទ' : null,
+                            validator: (v) => v == null || v.isEmpty
+                                ? 'សូមបញ្ចូលអ៊ីម៉ែល ឬ លេខទូរសព្ទ'
+                                : null,
                           ),
                           const SizedBox(height: 16),
 
@@ -82,8 +101,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     () => _obscurePassword = !_obscurePassword),
                               ),
                             ),
-                            validator: (v) =>
-                                v == null || v.length < 6 ? 'ពាក្យសម្ងាត់ត្រូវ >= 6 អក្សរ' : null,
+                            validator: (v) => v == null || v.length < 6
+                                ? 'ពាក្យសម្ងាត់ត្រូវ >= 6 អក្សរ'
+                                : null,
                           ),
 
                           // Login button
@@ -93,7 +113,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Text('ចូល'),
                           ),
@@ -149,7 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(_friendlyError(e)),
             backgroundColor: AppColors.error,
           ),
         );
@@ -161,25 +182,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _configureServer() async {
     final service = ref.read(authServiceProvider);
-    final controller = TextEditingController(text: service.dio.options.baseUrl.replaceFirst(RegExp(r'/api$'), ''));
-    final value = await showDialog<String>(context: context, builder: (context) => AlertDialog(
-      title: const Text('API server'),
-      content: TextField(controller: controller, keyboardType: TextInputType.url,
-        decoration: const InputDecoration(labelText: 'Server URL', hintText: 'https://api.example.com',
-          helperText: 'Release builds require HTTPS; local HTTP works in debug builds.')),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Save')),
-      ],
-    ));
+    final controller = TextEditingController(
+        text: service.dio.options.baseUrl.replaceFirst(RegExp(r'/api$'), ''));
+    final value = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('API server'),
+              content: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                      labelText: 'Server URL',
+                      hintText: 'https://api.example.com',
+                      helperText:
+                          'Release builds require HTTPS; local HTTP works in debug builds.')),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, controller.text),
+                    child: const Text('Save')),
+              ],
+            ));
     controller.dispose();
     if (value == null) return;
     try {
       await service.setApiUrl(value);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Server saved')));
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Server saved')),
+        );
+      }
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
     }
+  }
+
+  String _friendlyError(Object error) {
+    if (error is DioException) {
+      final responseData = error.response?.data;
+      if (responseData is Map && responseData['message'] is String) {
+        return responseData['message'] as String;
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return 'មិនអាចភ្ជាប់ API Server បានទេ។ សូមពិនិត្យ Server URL និងអ៊ីនធឺណិត។';
+      }
+    }
+    return error.toString();
   }
 
   @override
@@ -198,7 +253,8 @@ class _Header extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 80, height: 80,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(20),
