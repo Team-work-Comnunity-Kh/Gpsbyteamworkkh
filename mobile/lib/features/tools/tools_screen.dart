@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/coordinate_converter.dart';
@@ -77,15 +78,16 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
             child: const _CompassView(),
           ),
           const SizedBox(height: 16),
-          _SectionCard(
-            title: 'API server',
-            icon: Icons.dns_outlined,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SelectableText(ref.read(authServiceProvider).dio.options.baseUrl),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(onPressed: _configureServer, icon: const Icon(Icons.edit), label: const Text('Change server')),
-            ]),
-          ),
+          if (!kReleaseMode)
+            _SectionCard(
+              title: 'API server',
+              icon: Icons.dns_outlined,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SelectableText(ref.read(authServiceProvider).dio.options.baseUrl),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(onPressed: _configureServer, icon: const Icon(Icons.edit), label: const Text('Change server')),
+              ]),
+            ),
         ],
       ),
     );

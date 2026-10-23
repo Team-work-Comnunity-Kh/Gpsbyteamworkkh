@@ -64,7 +64,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-              placeholder="admin@smartgps.com"
+              placeholder="Email address"
             />
           </div>
 
@@ -95,10 +95,6 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400 khmer-font">
-          <p>គណនីសាកល្បង: admin@smartgps.com</p>
-          <p>ពាក្យសម្ងាត់: Admin@123456</p>
-        </div>
       </div>
     </div>
   );

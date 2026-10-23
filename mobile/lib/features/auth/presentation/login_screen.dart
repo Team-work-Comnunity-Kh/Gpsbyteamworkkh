@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
@@ -56,21 +57,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Text('SmartGPS — ប្រព័ន្ធ GPS ស្មាតសម្រាប់ប្រជាជន',
                               style: Theme.of(context).textTheme.bodySmall),
                           const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: _configureServer,
-                              icon: const Icon(Icons.dns_outlined),
-                              label: const Text('កំណត់ API Server'),
+                          if (!kReleaseMode) ...[
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: _configureServer,
+                                icon: const Icon(Icons.dns_outlined),
+                                label: const Text('កំណត់ API Server'),
+                              ),
                             ),
-                          ),
-                          Text(
-                            'Server: ${ref.watch(authServiceProvider).dio.options.baseUrl}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 16),
+                            Text(
+                              'Server: ${ref.watch(authServiceProvider).dio.options.baseUrl}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
                           // Identifier
                           TextFormField(

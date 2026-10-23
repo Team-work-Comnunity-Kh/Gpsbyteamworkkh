@@ -84,8 +84,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
-                validator: (v) =>
-                    v != null && v.length >= 8 ? null : 'ពាក្យសម្ងាត់ >= 8 អក្សរ',
+                validator: (v) {
+                  final value = v ?? '';
+                  if (value.length < 8) {
+                    return 'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងហោចណាស់ ៨ តួអក្សរ';
+                  }
+                  if (!RegExp(r'[a-z]').hasMatch(value) ||
+                      !RegExp(r'[A-Z]').hasMatch(value) ||
+                      !RegExp(r'\d').hasMatch(value)) {
+                    return 'ត្រូវមានអក្សរធំ អក្សរតូច និងលេខយ៉ាងហោចណាស់មួយ';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(

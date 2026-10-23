@@ -54,7 +54,7 @@ class AuthService {
   Future<AuthResult> login(String identifier, String password) async {
     final normalized = identifier.trim();
     final body = normalized.contains('@')
-        ? {'email': normalized, 'password': password}
+        ? {'email': normalized.toLowerCase(), 'password': password}
         : {'phone': normalized, 'password': password};
     final response = await dio.post('/auth/login', data: body);
     return AuthResult.fromJson(Map<String, dynamic>.from(unwrap(response.data) as Map));
@@ -68,7 +68,7 @@ class AuthService {
     String? phone,
   }) async {
     final response = await dio.post('/auth/register', data: {
-      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim().toLowerCase(),
       if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
       'firstName': firstName.trim(),
       'lastName': lastName.trim(),

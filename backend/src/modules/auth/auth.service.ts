@@ -32,15 +32,16 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const { email, phone, password, firstName, lastName, language } = registerDto;
+    const normalizedEmail = email?.trim().toLowerCase();
 
     // Validate that at least email or phone is provided
-    if (!email && !phone) {
+    if (!normalizedEmail && !phone) {
       throw new BadRequestException('Email or phone number is required');
     }
 
     // Check if user already exists
-    if (email) {
-      const existingUser = await this.userRepository.findOne({ where: { email } });
+    if (normalizedEmail) {
+      const existingUser = await this.userRepository.findOne({ where: { email: normalizedEmail } });
       if (existingUser) {
         throw new ConflictException('User with this email already exists');
       }
@@ -58,7 +59,7 @@ export class AuthService {
 
     // Create user
     const user = this.userRepository.create({
-      email,
+      email: normalizedEmail,
       phone,
       password: hashedPassword,
       firstName,
@@ -79,14 +80,16 @@ export class AuthService {
 
   async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
     const { email, phone, password } = loginDto;
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedPhone = phone?.trim();
 
-    if (!email && !phone) {
+    if (!normalizedEmail && !normalizedPhone) {
       throw new BadRequestException('Email or phone number is required');
     }
 
     // Find user
     const user = await this.userRepository.findOne({
-      where: email ? { email } : { phone },
+      where: normalizedEmail ? { email: normalizedEmail } : { phone: normalizedPhone },
     });
 
     if (!user) {
