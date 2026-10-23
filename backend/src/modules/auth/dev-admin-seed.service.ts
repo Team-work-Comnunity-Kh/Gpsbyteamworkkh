@@ -15,7 +15,11 @@ export class DevAdminSeedService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    if (this.config.get('NODE_ENV') !== 'development') return;
+    const isDevelopment = this.config.get('NODE_ENV') === 'development';
+    const bootstrapProductionAdmin =
+      this.config.get('NODE_ENV') === 'production' &&
+      this.config.get('BOOTSTRAP_ADMIN') === 'true';
+    if (!isDevelopment && !bootstrapProductionAdmin) return;
 
     const email = this.config.get<string>('ADMIN_EMAIL');
     const password = this.config.get<string>('ADMIN_PASSWORD');
@@ -40,6 +44,6 @@ export class DevAdminSeedService implements OnApplicationBootstrap {
     });
 
     await this.users.save(admin);
-    this.logger.log(`Development admin account created: ${email}`);
+    this.logger.log(`Initial admin account created: ${email}`);
   }
 }

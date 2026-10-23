@@ -1,0 +1,9 @@
+{$DOMAIN} {
+	@api path /api/* /health /socket.io/*
+	handle @api {
+		reverse_proxy backend:3000
+	}
+	handle {
+		reverse_proxy admin:8080
+	}
+}

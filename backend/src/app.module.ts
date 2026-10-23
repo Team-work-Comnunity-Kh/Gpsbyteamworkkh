@@ -38,7 +38,9 @@ import { LocationGateway } from './gateways/location.gateway';
       envFilePath: ['.env.local', '.env'],
     }),
 
-    // Database - using synchronize:true for dev without migrations
+        // Keep schema synchronization off in production by default. For a new
+        // deployment, DB_SCHEMA_SYNC=true may be used once to create the initial
+        // schema from entity metadata, then switched back to false.
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -54,7 +56,9 @@ import { LocationGateway } from './gateways/location.gateway';
           Parcel, Track, TrackPoint, Waypoint,
           Geofence, GeofenceAlert,
         ],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize:
+          configService.get('NODE_ENV') !== 'production' ||
+          configService.get('DB_SCHEMA_SYNC') === 'true',
         logging: configService.get('NODE_ENV') === 'development',
         ssl: false,
         // Retry connection on failure
