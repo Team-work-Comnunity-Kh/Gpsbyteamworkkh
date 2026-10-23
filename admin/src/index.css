@@ -20,6 +20,28 @@ body {
   font-family: 'Noto Sans Khmer', 'Battambang', sans-serif;
 }
 
+@keyframes dashboard-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-enter {
+  animation: dashboard-rise 420ms ease-out both;
+}
+
+.metric-card {
+  animation: dashboard-rise 420ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

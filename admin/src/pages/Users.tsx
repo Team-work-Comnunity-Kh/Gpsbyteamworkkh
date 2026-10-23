@@ -1,6 +1,8 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Search, Users as UsersIcon } from 'lucide-react';
+import { RefreshCw, Search, Users as UsersIcon, Trash2 } from 'lucide-react';
 import apiClient from '../api/client';
+import { useAuthStore } from '../stores/authStore';
+import toast from 'react-hot-toast';
 
 interface UserRecord {
   id: string;
@@ -31,6 +33,7 @@ export default function Users() {
   const [filters, setFilters] = useState({ search: '', role: '', active: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const currentUser = useAuthStore((state) => state.user);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -63,6 +66,19 @@ export default function Users() {
   const updateFilter = (key: 'role' | 'active', value: string) => {
     setPage(1);
     setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const deleteUser = async (user: UserRecord) => {
+    const label = user.email || user.phone || `${user.firstName} ${user.lastName}`;
+    if (!window.confirm(`Delete ${label}? This deactivates the account and revokes its active sessions.`)) return;
+    try {
+      await apiClient.delete(`/users/${encodeURIComponent(user.id)}`);
+      toast.success('User deleted and sessions revoked');
+      if (users.length === 1 && page > 1) setPage((value) => value - 1);
+      else await loadUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not delete this user');
+    }
   };
 
   const formatDate = (value: string | null) =>
@@ -143,6 +159,7 @@ export default function Users() {
                   <th className="px-5 py-3 font-medium">ស្ថានភាព</th>
                   <th className="px-5 py-3 font-medium">ថ្ងៃបង្កើត</th>
                   <th className="px-5 py-3 font-medium">ចូលចុងក្រោយ</th>
+                  <th className="px-5 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -168,6 +185,19 @@ export default function Users() {
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-gray-600 dark:text-gray-300">{formatDate(user.createdAt)}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-gray-600 dark:text-gray-300">{formatDate(user.lastLoginAt)}</td>
+                    <td className="whitespace-nowrap px-5 py-4 text-right">
+                      {user.role !== 'admin' && user.id !== currentUser?.id && (
+                        <button
+                          type="button"
+                          onClick={() => void deleteUser(user)}
+                          aria-label={`Delete ${user.email || user.phone || user.firstName}`}
+                          title="Delete user"
+                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

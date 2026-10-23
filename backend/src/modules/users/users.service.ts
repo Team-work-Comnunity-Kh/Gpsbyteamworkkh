@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, IsNull, Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 
 interface ListUsersOptions {
   page?: string;
@@ -13,7 +14,29 @@ interface ListUsersOptions {
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(User) private readonly users: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(RefreshToken) private readonly refreshTokens: Repository<RefreshToken>,
+  ) {}
+
+  async delete(id: string) {
+    const user = await this.users.findOne({ where: { id, deletedAt: IsNull() } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === 'admin') {
+      throw new ForbiddenException('Administrator accounts cannot be deleted here');
+    }
+
+    const deletedAt = new Date();
+    await this.users.manager.transaction(async (manager) => {
+      await manager.getRepository(User).update(id, { isActive: false, deletedAt });
+      await manager.getRepository(RefreshToken).update(
+        { userId: id, isRevoked: false },
+        { isRevoked: true, revokedAt: deletedAt },
+      );
+    });
+
+    return { success: true, id };
+  }
 
   async list(options: ListUsersOptions) {
     const page = this.toPositiveInteger(options.page, 1, 1_000_000);

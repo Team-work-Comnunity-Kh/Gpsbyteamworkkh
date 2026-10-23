@@ -12,6 +12,7 @@ import { GeofencesModule } from './modules/geofences/geofences.module';
 import { ToolsModule } from './modules/tools/tools.module';
 import { ExportModule } from './modules/export/export.module';
 import { UsersModule } from './modules/users/users.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 // Entities
 import { User } from './modules/auth/entities/user.entity';
@@ -89,6 +90,7 @@ import { LocationGateway } from './gateways/location.gateway';
     ToolsModule,
     ExportModule,
     UsersModule,
+    AdminModule,
   ],
   providers: [LocationGateway],
 })
