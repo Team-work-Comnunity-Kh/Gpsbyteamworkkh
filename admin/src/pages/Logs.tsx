@@ -1,0 +1,10 @@
+export default function Logs() {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 className="text-2xl font-bold mb-4 khmer-font">កំណត់ហេតុ</h2>
+      <p className="text-gray-600 dark:text-gray-400 khmer-font">
+        ផ្នែកកំណត់ហេតុប្រព័ន្ធ - នឹងត្រូវបានអភិវឌ្ឍបន្ត
+      </p>
+    </div>
+  );
+}
