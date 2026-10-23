@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThan, ILike } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -41,7 +41,9 @@ export class AuthService {
 
     // Check if user already exists
     if (normalizedEmail) {
-      const existingUser = await this.userRepository.findOne({ where: { email: normalizedEmail } });
+      const existingUser = await this.userRepository.findOne({
+        where: { email: ILike(normalizedEmail) },
+      });
       if (existingUser) {
         throw new ConflictException('User with this email already exists');
       }
@@ -89,7 +91,9 @@ export class AuthService {
 
     // Find user
     const user = await this.userRepository.findOne({
-      where: normalizedEmail ? { email: normalizedEmail } : { phone: normalizedPhone },
+      where: normalizedEmail
+        ? { email: ILike(normalizedEmail) }
+        : { phone: normalizedPhone },
     });
 
     if (!user) {
