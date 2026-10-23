@@ -4,7 +4,12 @@ import '../../providers/location_provider.dart';
 
 class GpsStatusPanel extends StatelessWidget {
   final LocationState locationState;
-  const GpsStatusPanel({super.key, required this.locationState});
+  final VoidCallback onRetry;
+  const GpsStatusPanel({
+    super.key,
+    required this.locationState,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +30,13 @@ class GpsStatusPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _signalLabel(locationState.signalStrength),
+                        locationState.isLoading && pos == null
+                            ? 'Searching for a GPS fix…'
+                            : _signalLabel(locationState.signalStrength),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: _signalColor(locationState.signalStrength),
-                          fontWeight: FontWeight.w600,
-                        ),
+                              color: _signalColor(locationState.signalStrength),
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                       if (pos != null)
                         Text(
@@ -57,6 +64,27 @@ class GpsStatusPanel extends StatelessWidget {
                 ],
               ],
             ),
+            if (locationState.error != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.location_disabled,
+                      color: Colors.deepOrange, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      locationState.error!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -64,18 +92,18 @@ class GpsStatusPanel extends StatelessWidget {
   }
 
   Color _signalColor(SignalStrength s) => switch (s) {
-    SignalStrength.strong => AppColors.signalStrong,
-    SignalStrength.medium => AppColors.signalMedium,
-    SignalStrength.weak => AppColors.signalWeak,
-    SignalStrength.none => AppColors.signalNone,
-  };
+        SignalStrength.strong => AppColors.signalStrong,
+        SignalStrength.medium => AppColors.signalMedium,
+        SignalStrength.weak => AppColors.signalWeak,
+        SignalStrength.none => AppColors.signalNone,
+      };
 
   String _signalLabel(SignalStrength s) => switch (s) {
-    SignalStrength.strong => 'GPS ខ្លាំង',
-    SignalStrength.medium => 'GPS មធ្យម',
-    SignalStrength.weak => 'GPS ខ្សោយ',
-    SignalStrength.none => 'គ្មាន GPS',
-  };
+        SignalStrength.strong => 'GPS ខ្លាំង',
+        SignalStrength.medium => 'GPS មធ្យម',
+        SignalStrength.weak => 'GPS ខ្សោយ',
+        SignalStrength.none => 'គ្មាន GPS',
+      };
 }
 
 class _SignalIcon extends StatelessWidget {

@@ -18,7 +18,7 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final _mapController = MapController();
   MapType _mapType = MapType.street;
   bool _isFollowing = true;
@@ -31,6 +31,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _compassAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -39,8 +40,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _compassAnim.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(locationProvider.notifier).refresh();
+    }
   }
 
   @override
@@ -85,7 +94,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               // Tile Layer
               TileLayer(
                 urlTemplate: _getTileUrl(_mapType),
-              userAgentPackageName: 'com.smartgps.smartgps',
+                userAgentPackageName: 'com.smartgps.smartgps',
                 maxZoom: 19,
               ),
 
@@ -134,7 +143,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
               top: MediaQuery.of(context).padding.top + 8,
               left: 12,
               right: 12,
-              child: GpsStatusPanel(locationState: locationState),
+              child: GpsStatusPanel(
+                locationState: locationState,
+                onRetry: _retryGps,
+              ),
             ),
 
           // ─── Map Controls ──────────────────────────────────────────
@@ -156,6 +168,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     ),
                     18,
                   );
+                } else if (_isFollowing) {
+                  ref.read(locationProvider.notifier).refresh();
                 }
               },
               onMapTypeChange: (type) => setState(() => _mapType = type),
@@ -175,6 +189,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
   }
 
+  Future<void> _retryGps() async {
+    final message = ref.read(locationProvider).error?.toLowerCase() ?? '';
+    setState(() => _isFollowing = true);
+    if (message.contains('blocked')) {
+      await Geolocator.openAppSettings();
+    } else if (message.contains('turn on location')) {
+      await Geolocator.openLocationSettings();
+    } else {
+      await ref.read(locationProvider.notifier).refresh();
+    }
+  }
+
   Future<void> _registerDevice() async {
     try {
       final device = await ref.read(apiServiceProvider).registerCurrentDevice();
@@ -191,22 +217,27 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final deviceId = _deviceId;
     final now = DateTime.now();
     if (deviceId == null ||
-        (!force && _lastLocationSentAt != null &&
-            now.difference(_lastLocationSentAt!) < const Duration(seconds: 15))) {
+        (!force &&
+            _lastLocationSentAt != null &&
+            now.difference(_lastLocationSentAt!) <
+                const Duration(seconds: 15))) {
       return;
     }
     _lastLocationSentAt = now;
-    ref.read(apiServiceProvider).updateDeviceLocation(
-      deviceId,
-      PositionData(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        altitude: position.altitude,
-        speed: position.speed,
-        heading: position.heading,
-        accuracy: position.accuracy,
-      ),
-    ).catchError((_) {});
+    ref
+        .read(apiServiceProvider)
+        .updateDeviceLocation(
+          deviceId,
+          PositionData(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            altitude: position.altitude,
+            speed: position.speed,
+            heading: position.heading,
+            accuracy: position.accuracy,
+          ),
+        )
+        .catchError((_) {});
   }
 
   Widget _buildLocationMarker(Position position, double mapRotation) {
@@ -236,13 +267,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   String _getTileUrl(MapType type) => switch (type) {
-    MapType.satellite =>
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    MapType.terrain =>
-      'https://tile.opentopomap.org/{z}/{x}/{y}.png',
-    _ =>
-      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  };
+        MapType.satellite =>
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        MapType.terrain => 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
+        _ => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      };
 }
 
 enum MapType { street, satellite, terrain }
@@ -262,16 +291,16 @@ class _CoordinatesCard extends StatelessWidget {
             Text(
               'Lat: ${position.latitude.toStringAsFixed(6)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.w500,
-              ),
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
             Text(
               'Lng: ${position.longitude.toStringAsFixed(6)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.w500,
-              ),
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
             if (position.altitude != 0)
               Text(
@@ -281,8 +310,8 @@ class _CoordinatesCard extends StatelessWidget {
             Text(
               '±${position.accuracy.toStringAsFixed(1)}m',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: _accuracyColor(position.accuracy),
-              ),
+                    color: _accuracyColor(position.accuracy),
+                  ),
             ),
           ],
         ),

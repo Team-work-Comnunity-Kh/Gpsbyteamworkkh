@@ -20,82 +20,139 @@ class LocationState {
   LocationState copyWith({
     Position? position,
     bool? isLoading,
-    String? error,
+    Object? error = _keepLocationError,
     List<SatelliteInfo>? satellites,
     SignalStrength? signalStrength,
-  }) => LocationState(
-    position: position ?? this.position,
-    isLoading: isLoading ?? this.isLoading,
-    error: error ?? this.error,
-    satellites: satellites ?? this.satellites,
-    signalStrength: signalStrength ?? this.signalStrength,
-  );
+  }) =>
+      LocationState(
+        position: position ?? this.position,
+        isLoading: isLoading ?? this.isLoading,
+        error: identical(error, _keepLocationError)
+            ? this.error
+            : error as String?,
+        satellites: satellites ?? this.satellites,
+        signalStrength: signalStrength ?? this.signalStrength,
+      );
 }
 
 enum SignalStrength { none, weak, medium, strong }
+
+const _keepLocationError = Object();
 
 class SatelliteInfo {
   final String constellation; // GPS, GLONASS, BeiDou, Galileo
   final int count;
   final double snr;
-  const SatelliteInfo({required this.constellation, required this.count, required this.snr});
+  const SatelliteInfo(
+      {required this.constellation, required this.count, required this.snr});
 }
 
 class LocationNotifier extends StateNotifier<LocationState> {
   StreamSubscription<Position>? _positionSub;
+  bool _initializing = false;
 
   LocationNotifier() : super(const LocationState(isLoading: true)) {
     _init();
   }
 
   Future<void> _init() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Location service is disabled',
-      );
-      return;
-    }
+    if (_initializing) return;
+    _initializing = true;
+    state = state.copyWith(isLoading: true, error: null);
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
         state = state.copyWith(
           isLoading: false,
-          error: 'Location permission denied',
+          error: 'Turn on Location/GPS in your phone settings, then tap retry.',
         );
         return;
       }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.unableToDetermine) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Location permission was denied. Allow it to use live GPS.',
+        );
+        return;
+      }
+      if (permission == LocationPermission.deniedForever) {
+        state = state.copyWith(
+          isLoading: false,
+          error:
+              'Location permission is blocked. Open app settings and allow location.',
+        );
+        return;
+      }
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        state = state.copyWith(
+          isLoading: false,
+          error:
+              'Location permission is unavailable. Allow location and retry.',
+        );
+        return;
+      }
+
+      // Start streaming first, then ask Android for an immediate current fix.
+      await _positionSub?.cancel();
+      _positionSub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 2,
+        ),
+      ).listen(
+        _acceptPosition,
+        onError: (Object error) {
+          state = state.copyWith(
+              error: 'GPS update failed: $error', isLoading: false);
+        },
+      );
+
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.bestForNavigation,
+          timeLimit: const Duration(seconds: 20),
+        );
+        _acceptPosition(position);
+      } on TimeoutException {
+        if (state.position == null) {
+          state = state.copyWith(
+            isLoading: false,
+            error:
+                'GPS has not found your location yet. Move outdoors and retry.',
+          );
+        }
+      }
+    } catch (error) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Location permission permanently denied',
+        error: 'Could not read GPS location: $error',
       );
-      return;
+    } finally {
+      _initializing = false;
     }
+  }
 
-    // Start listening to location updates
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 2, // Update every 2 meters
-      ),
-    ).listen(
-      (position) {
-        state = state.copyWith(
-          position: position,
-          isLoading: false,
-          error: null,
-          signalStrength: _calcSignalStrength(position.accuracy),
-        );
-      },
-      onError: (error) {
-        state = state.copyWith(error: error.toString(), isLoading: false);
-      },
+  Future<void> refresh() async {
+    if (_initializing) return;
+    await _positionSub?.cancel();
+    _positionSub = null;
+    await _init();
+  }
+
+  void _acceptPosition(Position position) {
+    state = state.copyWith(
+      position: position,
+      isLoading: false,
+      error: null,
+      signalStrength: _calcSignalStrength(position.accuracy),
     );
   }
 
@@ -112,7 +169,6 @@ class LocationNotifier extends StateNotifier<LocationState> {
   }
 }
 
-final locationProvider =
-    StateNotifierProvider<LocationNotifier, LocationState>(
+final locationProvider = StateNotifierProvider<LocationNotifier, LocationState>(
   (ref) => LocationNotifier(),
 );
