@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/coordinate_converter.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import '../../shared/providers/auth_provider.dart';
+import '../../shared/providers/locale_provider.dart';
 
 class ToolsScreen extends ConsumerStatefulWidget {
   const ToolsScreen({super.key});
@@ -88,11 +89,28 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
             ),
           const SizedBox(height: 16),
           _SectionCard(
-            title: 'គណនី',
+            title: appText(context, 'គណនី និង ភាសា', 'Account & language'),
             icon: Icons.account_circle_outlined,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                DropdownButtonFormField<String>(
+                  initialValue: ref.watch(appLocaleProvider).languageCode,
+                  decoration: InputDecoration(
+                    labelText: appText(context, 'ភាសា', 'Language'),
+                    prefixIcon: const Icon(Icons.language),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'km', child: Text('ខ្មែរ')),
+                    DropdownMenuItem(value: 'en', child: Text('English')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      ref.read(appLocaleProvider.notifier).setLanguage(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
                 Builder(builder: (context) {
                   final user = ref.watch(authStateProvider).asData?.value;
                   return ListTile(
@@ -100,14 +118,14 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(user?.displayName.isNotEmpty == true
                         ? user!.displayName
-                        : 'SmartGPS account'),
+                        : appText(context, 'គណនី SmartGPS', 'SmartGPS account')),
                     subtitle: Text(user?.email ?? user?.phone ?? ''),
                   );
                 }),
                 OutlinedButton.icon(
                   onPressed: _logout,
                   icon: const Icon(Icons.logout),
-                  label: const Text('ចាកចេញពីគណនី'),
+                  label: Text(appText(context, 'ចាកចេញពីគណនី', 'Sign out')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red.shade700,
                   ),
@@ -124,17 +142,18 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ចាកចេញពីគណនី?'),
-        content: const Text('អ្នកអាចចូលគណនីវិញបានគ្រប់ពេល។'),
+        title: Text(appText(context, 'ចាកចេញពីគណនី?', 'Sign out?')),
+        content: Text(appText(
+            context, 'អ្នកអាចចូលគណនីវិញបានគ្រប់ពេល។', 'You can sign in again at any time.')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('បោះបង់'),
+            child: Text(appText(context, 'បោះបង់', 'Cancel')),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.logout),
-            label: const Text('ចាកចេញ'),
+            label: Text(appText(context, 'ចាកចេញ', 'Sign out')),
           ),
         ],
       ),

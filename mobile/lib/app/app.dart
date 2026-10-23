@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../shared/providers/theme_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import 'router.dart';
 
 class SmartGPSApp extends ConsumerWidget {
@@ -11,6 +12,7 @@ class SmartGPSApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final locale = ref.watch(appLocaleProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -19,6 +21,7 @@ class SmartGPSApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      locale: locale,
       routerConfig: router,
 
       // Localization support (Khmer + English)

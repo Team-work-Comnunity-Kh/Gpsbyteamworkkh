@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/providers/locale_provider.dart';
 import '../../providers/location_provider.dart';
 
 class GpsStatusPanel extends StatelessWidget {
@@ -31,8 +32,8 @@ class GpsStatusPanel extends StatelessWidget {
                     children: [
                       Text(
                         locationState.isLoading && pos == null
-                            ? 'Searching for a GPS fix…'
-                            : _signalLabel(locationState.signalStrength),
+                            ? appText(context, 'កំពុងស្វែងរកទីតាំង GPS…', 'Searching for GPS…')
+                            : _signalLabel(context, locationState.signalStrength),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: _signalColor(locationState.signalStrength),
                               fontWeight: FontWeight.w600,
@@ -40,7 +41,7 @@ class GpsStatusPanel extends StatelessWidget {
                       ),
                       if (pos != null)
                         Text(
-                          'ភាពត្រឹមត្រូវ: ±${pos.accuracy.toStringAsFixed(1)}m',
+                          '${appText(context, 'ភាពត្រឹមត្រូវ', 'Accuracy')}: ±${pos.accuracy.toStringAsFixed(1)}m',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                     ],
@@ -73,14 +74,14 @@ class GpsStatusPanel extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      locationState.error!,
+                      _localizedError(context, locationState.error!),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
                   TextButton.icon(
                     onPressed: onRetry,
                     icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Retry'),
+                    label: Text(appText(context, 'ព្យាយាមម្តងទៀត', 'Retry')),
                   ),
                 ],
               ),
@@ -98,12 +99,29 @@ class GpsStatusPanel extends StatelessWidget {
         SignalStrength.none => AppColors.signalNone,
       };
 
-  String _signalLabel(SignalStrength s) => switch (s) {
-        SignalStrength.strong => 'GPS ខ្លាំង',
-        SignalStrength.medium => 'GPS មធ្យម',
-        SignalStrength.weak => 'GPS ខ្សោយ',
-        SignalStrength.none => 'គ្មាន GPS',
+  String _signalLabel(BuildContext context, SignalStrength s) => switch (s) {
+        SignalStrength.strong => appText(context, 'GPS ខ្លាំង', 'GPS strong'),
+        SignalStrength.medium => appText(context, 'GPS មធ្យម', 'GPS fair'),
+        SignalStrength.weak => appText(context, 'GPS ខ្សោយ', 'GPS weak'),
+        SignalStrength.none => appText(context, 'គ្មាន GPS', 'No GPS fix'),
       };
+
+  String _localizedError(BuildContext context, String message) {
+    if (Localizations.localeOf(context).languageCode == 'en') return message;
+    if (message.startsWith('Turn on Location')) {
+      return 'សូមបើក Location/GPS ក្នុងការកំណត់ទូរស័ព្ទ រួចចុចព្យាយាមម្តងទៀត។';
+    }
+    if (message.startsWith('Location permission was denied')) {
+      return 'សូមអនុញ្ញាត Location ដើម្បីប្រើ GPS ផ្ទាល់។';
+    }
+    if (message.startsWith('Location permission is blocked')) {
+      return 'សូមចូលការកំណត់ App ហើយអនុញ្ញាត Location។';
+    }
+    if (message.startsWith('GPS has not found')) {
+      return 'GPS មិនទាន់រកឃើញទីតាំងទេ។ សាកល្បងនៅក្រៅអគារ រួចចុចព្យាយាមម្តងទៀត។';
+    }
+    return message;
+  }
 }
 
 class _SignalIcon extends StatelessWidget {

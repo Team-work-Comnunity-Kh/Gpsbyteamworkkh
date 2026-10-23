@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/services/api_service.dart';
+import '../../../shared/providers/locale_provider.dart';
 import '../providers/location_provider.dart';
 import 'widgets/gps_status_panel.dart';
 import 'widgets/map_controls.dart';
@@ -23,6 +24,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
   MapType _mapType = MapType.street;
   bool _isFollowing = true;
   bool _showGpsPanel = true;
+  bool _mapReady = false;
+  bool _tileLoadError = false;
+  double _mapRotation = 0;
   bool _registrationStarted = false;
   String? _deviceId;
   DateTime? _lastLocationSentAt;
@@ -63,12 +67,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // Follow GPS position
     ref.listen(locationProvider, (_, next) {
-      if (_isFollowing && next.position != null) {
-        _mapController.move(
-          LatLng(next.position!.latitude, next.position!.longitude),
-          _mapController.camera.zoom,
-        );
-        _compassAnim.forward(from: 0);
+      if (_isFollowing && _mapReady && next.position != null) {
+        _followPosition(next.position!);
       }
       final position = next.position;
       if (position != null) _sendDeviceLocation(position);
@@ -83,10 +83,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
             options: MapOptions(
               initialCenter: const LatLng(11.5564, 104.9282), // Phnom Penh
               initialZoom: 15,
+              backgroundColor: const Color(0xFFE8EEF0),
+              onMapReady: () {
+                _mapReady = true;
+                final position = ref.read(locationProvider).position;
+                if (_isFollowing && position != null) _followPosition(position);
+              },
               onTap: (_, __) => setState(() => _isFollowing = false),
               onMapEvent: (event) {
                 if (event is MapEventRotate) {
-                  setState(() {});
+                  setState(() => _mapRotation = event.camera.rotation);
                 }
               },
             ),
@@ -96,6 +102,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 urlTemplate: _getTileUrl(_mapType),
                 userAgentPackageName: 'com.smartgps.smartgps',
                 maxZoom: 19,
+                errorTileCallback: (_, __, ___) {
+                  if (mounted && !_tileLoadError) {
+                    setState(() => _tileLoadError = true);
+                  }
+                },
               ),
 
               // Current position marker
@@ -111,7 +122,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       height: 80,
                       child: _buildLocationMarker(
                         locationState.position!,
-                        _mapController.camera.rotation,
+                        _mapRotation,
                       ),
                     ),
                   ],
@@ -149,6 +160,38 @@ class _MapScreenState extends ConsumerState<MapScreen>
               ),
             ),
 
+          if (_tileLoadError)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 92,
+              left: 12,
+              right: 12,
+              child: Material(
+                color: Theme.of(context).colorScheme.surface,
+                elevation: 3,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wifi_off, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(appText(context,
+                            'មិនអាចបង្ហាញផែនទីបានទេ។ GPS នៅតែអាចដំណើរការ។',
+                            'Map tiles unavailable. GPS can still work.')),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Dismiss',
+                        onPressed: () => setState(() => _tileLoadError = false),
+                        icon: const Icon(Icons.close, size: 18),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // ─── Map Controls ──────────────────────────────────────────
           Positioned(
             right: 12,
@@ -157,7 +200,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               mapController: _mapController,
               mapType: _mapType,
               isFollowing: _isFollowing,
-              compassRotation: _mapController.camera.rotation,
+              compassRotation: _mapRotation,
               onFollowToggle: () {
                 setState(() => _isFollowing = !_isFollowing);
                 if (_isFollowing && locationState.position != null) {
@@ -199,6 +242,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
     } else {
       await ref.read(locationProvider.notifier).refresh();
     }
+  }
+
+  void _followPosition(Position position) {
+    if (!_mapReady || !mounted) return;
+    _mapController.move(
+      LatLng(position.latitude, position.longitude),
+      _mapController.camera.zoom,
+    );
+    _compassAnim.forward(from: 0);
   }
 
   Future<void> _registerDevice() async {
